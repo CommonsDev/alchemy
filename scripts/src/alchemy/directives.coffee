@@ -1,18 +1,28 @@
 module = angular.module("alchemy.directives", [])
 
-module.directive("mucMessages", ->
+module.directive("mucMessages", ($timeout) ->
         return {
-                restrict: 'E'
-                translude: true
-                template: "<li ng-repeat='msg in messages' class='muc-message'>{{ msg.from }} said: {{ msg.text }}</li>"
-                scope:
-                        messages: "=messages"
+                restrict: 'EA'
+                transclude: true
+                replace: true
+                # templateUrl: "partials/message-list.html"
+                template: '<span ng-transclude></span>'
 
                 constructor: ->
                         console.debug("yeah")
 
-                link: (scope, element, attrs) =>
-                        scope.$watch('messages', (oldMessages, newMessages)=>
-                                console.debug("msg changed!")
-                        )
+                link: ($scope, $element, $attrs) =>
+
+                        replaceURLWithHTMLLinks = (text) ->
+                                exp = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig
+                                return text.replace(exp,"<a href='$1' target='_new'>$1</a>")
+
+                        # Allow to process AFTER rendering using queue
+                        $timeout(->
+                                el = $($element)
+                                el.html(replaceURLWithHTMLLinks(el.text()))
+                                el.children('a').oembed(null, {maxHeight: '200px'})
+                        , 0)
+
+
         })

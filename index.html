@@ -11,6 +11,7 @@
     <!-- css -->
     <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles/css/screen.css">
+    <link rel="stylesheet" href="styles/css/jquery.oembed.css">
 
     <!-- vendor includes -->        
     <!--[if lt IE 9]>
@@ -19,6 +20,7 @@
     <!-- jquery and plugins -->
     <script src="http://code.jquery.com/jquery-1.9.1.min.js" type="text/javascript"></script>
     <script src="scripts/vendor/moment.min.js"></script>
+    <script src="scripts/vendor/jquery.oembed.js"></script>
     <script src="scripts/vendor/strophe.js"></script>
     <script src="scripts/vendor/strophe.muc.js"></script>
     <script src="scripts/vendor/strophe.vcard.js"></script>
@@ -28,7 +30,8 @@
 
     <!-- angular -->
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.1.5/angular.min.js"></script>
-    <script src="scripts/vendor/angular-cookies.min.js"></script>
+    <script src="scripts/vendor/angular-cookies.js"></script>
+    <script src="scripts/vendor/angular-localStorageModule.js"></script>
     <script src="scripts/vendor/angular-resource-tastypie.js"></script>
     <script src="scripts/vendor/http-auth-interceptor.js"></script>
     <script src="scripts/vendor/angular-imageupload.js"></script>
@@ -47,17 +50,21 @@
     <div id="page" class="container-fluid fill" ng-controller="ChatRoomController">
       <div class="row-fluid">
 	
-	<div class="span8" ng-switch="status">
-	  <div ng-switch-when="0">
+	<div class="span8">
+	  <div ng-show="status == 0">
 	    <form name="loginForm" ng-submit="connect()" >
 	      <h2>Please login using your Jabber or Gtalk ID</h2>
-    	      <input type="text" ng-model="username" name="username" required/>
-    	      <input type="password" ng-model="password" required>
+    	      <input type="text" ng-model="form.username" name="username" required/>
+    	      <input type="password" ng-model="form.password" required>
     	      <button class="btn">Connect</button>
 	    </form>
 	  </div>
 
-	  <div ng-switch-when="5"> <!-- connected -->
+	  <div ng-show="status == 1" class="progress progress-striped active">
+	    <div class="bar" style="width: 50%;"></div>
+	  </div>
+
+	  <div ng-show="status >= 5"> <!-- connected -->
 
 	    <!-- message listing -->
 	    <div id="message-box" class="row-fluid">
@@ -67,13 +74,13 @@
 		    <dt ng-hide="{{ msg.from == nickname }}">{{ msg.from }}</dt>
 		    <dt class="mine" ng-show="{{ msg.from == nickname }}">{{ msg.from }}</dt>
 		    <dd>
-		      {{ msg.text }}
+		      <span muc-messages>{{ msg.text }}</span>
 		    </dd>
 		  </div>
 		</dl>
 	      </div>
 	    </div>
-	    
+
 	    
 	    <!-- send message -->
 	    <div class="row-fluid">

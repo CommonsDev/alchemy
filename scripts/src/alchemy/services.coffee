@@ -5,7 +5,7 @@ class JabberService
                 @connection = new Strophe.Connection("http://bosh.metajack.im:5280/xmpp-httpbind")
 
                 @connection.rawInput = (data) ->
-                        console.debug(data)
+                        # console.debug(data)
 
                 @connection.rawOutput = (data) ->
                         # console.debug(data)
@@ -15,10 +15,18 @@ class JabberService
                 @connection.connect(username, password, callback)
 
         room_join: (name, nickname, msg_cb, roster_cb) =>
-                @connection.muc.join(name, nickname, msg_cb, null, roster_cb) # XXX
+                @connection.muc.join(name, nickname, msg_cb, null, roster_cb, null,
+                        maxstanzas: 50
+                        ) # XXX
+
+        room_leave: (name, nickname) =>
+                @connection.muc.leave(name, nickname)
 
         room_message: (room, msg) =>
                 @connection.muc.groupchat(room, msg) # XXX
+
+        connection_restore: (jid, sid, rid, callback) =>
+                @connection.attach(jid, sid, rid, callback)
 
 
 services.service("jabber", [ "$rootScope", JabberService])
