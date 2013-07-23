@@ -1,12 +1,15 @@
 module = angular.module('alchemy.controllers', ['http-auth-interceptor', 'LocalStorageModule'])
 
+class AlchemyController
+        constructor: (@$scope) ->
+                @$scope.room_names = ["#test@conference.im.linux62.org", "#yeah@conference.im.linux62.org"]
+
 class ChatRoomController
         constructor: (@$scope, @localStorageService, @jabber) ->
                 @$scope.nickname = "alchemist2"
 
                 @$scope.status = 0
 
-                @$scope.room_name = "#test@conference.im.linux62.org"
                 @$scope.room_topic = null
                 @$scope.room = null
 
@@ -87,7 +90,6 @@ class ChatRoomController
                 from = stanza.getAttribute('from')
                 to = stanza.getAttribute('to')
 
-                console.debug("got msg...")
                 # Set topic?
                 query = stanza.getElementsByTagName("subject")
                 if query.length > 0
@@ -107,7 +109,6 @@ class ChatRoomController
                                         text: message
                                 )
                         )
-                        # $(".oembed").oembed(message, {maxWidth: '300px', maxHeight: '150px'})
                         return true
 
                 return true
@@ -118,24 +119,45 @@ class ChatRoomController
 
                 switch status
                         when Strophe.Status.CONNECTING
-                                console.debug("Jabber connecting...")
+                                console.debug("#{status}: Jabber connecting...")
+                                return true
+
+                        when Strophe.Status.CONNFAIL
+                                console.debug("#{status}: Connection failed")
+                                return true
+
+                        when Strophe.Status.AUTHENTICATING
+                                console.debug("#{status}: Authenticating...")
+                                return true
+
+                        when Strophe.Status.AUTHFAIL
+                                console.debug("#{status}: Auth failed")
                                 return true
 
                         when Strophe.Status.ATTACHED
-                                console.debug("Jabber BOSH attached.")
+                                console.debug("#{status}: Jabber BOSH attached.")
                                 console.debug(@jabber.connection.muc.rooms[@$scope.room_name])
                                 @jabber.room_join(@$scope.room_name, @$scope.nickname, this.onMessageReceived, this.onRosterList)
                                 @$scope.room = @jabber.connection.muc.rooms[@$scope.room_name]
                                 return true
 
                         when Strophe.Status.CONNECTED
-                                console.debug("Jabber connected.")
+                                console.debug("#{status}: Jabber connected.")
                                 @jabber.room_join(@$scope.room_name, @$scope.nickname, this.onMessageReceived, this.onRosterList)
                                 @$scope.room = @jabber.connection.muc.rooms[@$scope.room_name]
                                 return true
 
+                        when Strophe.Status.DISCONNECTING
+                                console.debug("#{status}: Disconnecting...")
+                                return true
+
+                        when Strophe.Status.DISCONNECTED
+                                console.debug("#{status}: Disconnected.")
+                                return true
+
                         when Strophe.Status.ERROR
                                 console.debug("ERROR!")
+                                return true
 
                 return true
 
@@ -155,3 +177,4 @@ class ChatRoomController
                         @jabber.connect(@$scope.form.username, @$scope.form.password, this.onConnect)
 
 module.controller("ChatRoomController", ['$scope', 'localStorageService', 'jabber', ChatRoomController])
+module.controller("AlchemyController", ['$scope', AlchemyController])

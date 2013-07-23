@@ -20,8 +20,20 @@ module.directive("mucMessages", ($timeout) ->
                         # Allow to process AFTER rendering using queue
                         $timeout(->
                                 el = $($element)
+
+                                # Make url clickable
                                 el.html(replaceURLWithHTMLLinks(el.text()))
-                                el.children('a').oembed(null, {maxHeight: '200px'})
+
+                                # Preview pictures
+                                el.find("a[href$='.png'], a[href$='.jpg'], a[href$='.tiff'], a[href$='.gif']").each(->
+                                        console.debug("converting picture")
+                                        img = $("<img>", {src: this.href, class: "preview"})
+                                        $(this).replaceWith(img)
+                                )
+
+                                # Embed media
+                                el.find('a').oembed(null, {maxHeight: '200px'})
+
                         , 0)
 
 
