@@ -2,7 +2,7 @@ services = angular.module("alchemy.services", ['LocalStorageModule'])
 
 class JabberService
         constructor: (@$rootScope, @localStorageService) ->
-                @connection = new Strophe.Connection("http://192.168.2.168:5280/http-bind/")
+                @connection = new Strophe.Connection("http://carpe.local:5280/http-bind/")
 
                 @connection.rawInput = (data) ->
                         # console.debug(data)
@@ -12,8 +12,9 @@ class JabberService
 
                 @status = 0
 
-                @username = "glibersat@carpe.local"
-                @password = ""
+                @$rootScope.jabber_login =
+                        username: "bob@carpe.local"
+                        password: "plop"
 
 
                 # XXX Shouldn't be here
@@ -61,6 +62,7 @@ class JabberService
 
                         when Strophe.Status.ATTACHED
                                 console.debug("#{status}: Jabber BOSH attached.")
+                                @$rootScope.$broadcast('jabber-attached')
                                 #console.debug(@jabber.connection.muc.rooms[@$scope.room_name])
                                 #@jabber.room_join(@$scope.room_name, @$scope.nickname, this.onMessageReceived, this.onRosterList)
                                 #@$scope.room = @jabber.connection.muc.rooms[@$scope.room_name]
@@ -68,17 +70,17 @@ class JabberService
 
                         when Strophe.Status.CONNECTED
                                 console.debug("#{status}: Jabber connected.")
-                                #@jabber.room_join(@$scope.room_name, @$scope.nickname, this.onMessageReceived, this.onRosterList)
-                                #@$scope.room = @jabber.connection.muc.rooms[@$scope.room_name]
                                 @$rootScope.$broadcast('jabber-connected')
                                 return true
 
                         when Strophe.Status.DISCONNECTING
                                 console.debug("#{status}: Disconnecting...")
+                                @$rootScope.$broadcast('jabber-connecting')
                                 return true
 
                         when Strophe.Status.DISCONNECTED
                                 console.debug("#{status}: Disconnected.")
+                                @$rootScope.$broadcast('jabber-disconnected')
                                 return true
 
                         when Strophe.Status.ERROR
@@ -101,7 +103,7 @@ class JabberService
                         console.debug("Attaching connection... #{jid} #{sid} #{rid}")
                         @connection.attach(jid, sid, rid, callback)
                 else
-                        @connection.connect(@username, @password, this.onConnect)
+                        @connection.connect(@$rootScope.jabber_login.username, @$rootScope.jabber_login.password, this.onConnect)
 
         room_join: (name, nickname, msg_cb, presence_cb, roster_cb) =>
                 @connection.muc.join(name, nickname, msg_cb, presence_cb, roster_cb, null,

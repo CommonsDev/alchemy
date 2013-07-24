@@ -25,6 +25,13 @@
     <script src="scripts/vendor/strophe.muc.js"></script>
     <script src="scripts/vendor/strophe.vcard.js"></script>
 
+    <!-- jingle -->
+    <script src="scripts/vendor/strophe.jingle.js"></script>
+    <script src="scripts/vendor/strophe.jingle.adapter.js"></script>
+    <script src="scripts/vendor/strophe.jingle.session.js"></script>
+    <script src="scripts/vendor/strophe.jingle.sdp.js"></script>
+
+
     <!-- bootstrap -->
     <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js"></script>
 
@@ -46,9 +53,15 @@
     <script src="scripts/app.js"></script>
 
     <script type="text/javascript">
+         window.RTC = setupRTC();
       $(document).ready(function() {
          $('#room-tabs a:first').tab('show');
-      })
+
+         if ( window.RTC != null ) {
+            RTCPeerconnection = window.RTC.peerconnection;
+         }
+
+      });
     </script>
 
   </head>
@@ -57,13 +70,13 @@
 
       <!-- login form -->
       <div ng-show="jabber.status < 5">
+
 	<form name="loginForm" ng-submit="jabber.connect()" >
 	  <h2>Please login using your Jabber or Gtalk ID</h2>
-    	  <input type="text" ng-model="jabber.username" name="username" required/>
-    	  <input type="password" ng-model="jabber.password" required>
+    	  <input type="text" ng-model="jabber_login.username" name="username" required/>
+    	  <input type="password" ng-model="jabber_login.password" required>
     	  <button class="btn">Connect</button>
 	</form>
-
 
 	<h2 ng-show="jabber.status == 1">Connecting...</h2>
 	<h2 ng-show="jabber.status == 3">Authenticating...</h2>
@@ -90,7 +103,6 @@
 
 	    <div class="span9">
 	      <div>
-
 		<!-- message listing -->
 		<div id="message-box" class="row-fluid">
 		  <div class="span12">
@@ -129,6 +141,14 @@
 	      
 	      <div>
 		<h3>Who's here?</h3>
+
+		<div ng-controller="VideoChatController">
+		  <button ng-click="chat()">Chat!</button>
+		  <video id="myvideo"></video>
+		  <div id="remotevideo"></div>
+		</div>
+
+
 		<ul class="unstyled">
 		  <li ng-repeat="occupant in occupants">
 		    <div class="media">
