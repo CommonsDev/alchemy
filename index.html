@@ -45,39 +45,51 @@
     <!-- main app -->
     <script src="scripts/app.js"></script>
 
+    <script type="text/javascript">
+      $(document).ready(function() {
+         $('#room-tabs a:first').tab('show');
+      })
+    </script>
+
   </head>
   <body>
     <div id="page" class="container-fluid fill" ng-controller="AlchemyController">
 
-      <ul class="nav nav-tabs">
+      <!-- login form -->
+      <div ng-show="jabber.status < 5">
+	<form name="loginForm" ng-submit="jabber.connect()" >
+	  <h2>Please login using your Jabber or Gtalk ID</h2>
+    	  <input type="text" ng-model="jabber.username" name="username" required/>
+    	  <input type="password" ng-model="jabber.password" required>
+    	  <button class="btn">Connect</button>
+	</form>
+
+
+	<h2 ng-show="jabber.status == 1">Connecting...</h2>
+	<h2 ng-show="jabber.status == 3">Authenticating...</h2>
+      
+	<div class="progress progress-striped active">
+	  <div class="bar" style="width: {{ jabber.status*10 }}%;"></div>
+	</div>
+
+      </div>
+
+
+      <!-- room tabs -->
+      <ul id="room-tabs" class="nav nav-tabs">
 	<li ng-repeat="room_name in room_names"><a href="#room-{{ $index }}" data-toggle="tab">{{ room_name }}</a></li>
 	<li><a href="#">+</a></li>
       </ul>
 
+      <!-- rooms -->
       <div class="tab-content">
 
 	<div ng-repeat="room_name in room_names" ng-controller="ChatRoomController" class="tab-pane" id="room-{{ $index }}">
 	  
-	  <div class="row-fluid">
+	  <div class="row-fluid" ng-show="room">  <!-- room joined -->
 
-	    <div class="span8">
-	      <div ng-show="status < 5">
-		<form name="loginForm" ng-submit="connect()" >
-		  <h2>Please login using your Jabber or Gtalk ID</h2>
-    		  <input type="text" ng-model="form.username" name="username" required/>
-    		  <input type="password" ng-model="form.password" required>
-    		  <button class="btn">Connect</button>
-		</form>
-	      </div>
-
-	      <h1 ng-show="status == 1">Connecting...</h1>
-	      <h1 ng-show="status == 3">Authenticating...</h1>
-
-	      <div ng-show="status < 5" class="progress progress-striped active">
-		<div class="bar" style="width: {{ status*10 }}%;"></div>
-	      </div>
-
-	      <div ng-show="status >= 5"> <!-- connected -->
+	    <div class="span9">
+	      <div>
 
 		<!-- message listing -->
 		<div id="message-box" class="row-fluid">
@@ -109,14 +121,13 @@
 
 	    </div> <!-- left part -->
 
-	    <div id="sidebar" class="span4 well">
-	      <h3 ng-show="room.name">{{ room.name }}</h3>
-	      <h3 ng-hide="room.name">{{ room_name }}</h3>
+	    <div id="sidebar" class="span3 well">
+	      <h3>{{ getShortRoomName() }}</h3>
 
 	      <p class="lead" ng-show="room_topic">{{ room_topic }}</p>
-	      <p class="lead" ng-hide="room_topic">Please connect using the form.</p>
+	      <p class="lead" ng-hide="room_topic"><em>No topic set.</em></p>
 	      
-	      <div ng-show="room">
+	      <div>
 		<h3>Who's here?</h3>
 		<ul class="unstyled">
 		  <li ng-repeat="occupant in occupants">
@@ -140,8 +151,9 @@
 
 	      </div>
 	    </div>
-	  </div>
-	</div> <!-- room -->
+	  </div>  <!-- room -->
+
+	</div>
 
       </div>
   </body>

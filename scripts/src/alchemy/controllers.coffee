@@ -1,12 +1,15 @@
-module = angular.module('alchemy.controllers', ['http-auth-interceptor', 'LocalStorageModule'])
+module = angular.module('alchemy.controllers', ['http-auth-interceptor'])
 
 class AlchemyController
-        constructor: (@$scope) ->
-                @$scope.room_names = ["#test@conference.im.linux62.org", "#yeah@conference.im.linux62.org"]
+        constructor: (@$scope, @jabber) ->
+                @$scope.room_names = ["#test@conference.carpe.local", "#yeah@conference.carpe.local"]
+
+                @$scope.jabber = @jabber
+
 
 class ChatRoomController
-        constructor: (@$scope, @localStorageService, @jabber) ->
-                @$scope.nickname = "alchemist2"
+        constructor: (@$scope, @jabber) ->
+                @$scope.nickname = Strophe.getNodeFromJid(@jabber.username)
 
                 @$scope.status = 0
 
@@ -19,29 +22,32 @@ class ChatRoomController
 
                 @$scope.form =
                         message: null
-                        username: ""
-                        password: ""
-
 
                 @$scope.connect = this.connect
                 @$scope.sendMessage = this.sendMessage
+                @$scope.getShortRoomName = this.getShortRoomName
 
-                # XXX Shouldn't be here
-                $(window).bind('beforeunload', (e) =>
-                        # Save ids in the localstorage to restore connection later if needed
-                        if @$scope.status in [Strophe.Status.CONNECTED, Strophe.Status.ATTACHED]
-                                #@localStorageService.add('jid', @jabber.connection.jid)
-                                #@localStorageService.add('sid', @jabber.connection.sid)
-                                #@localStorageService.add('rid', @jabber.connection.rid)
-
-                                # Quit room
-                                # @jabber.room_leave(@$scope.room.name, @$scope.nickname)
-
-                                @jabber.connection.disconnect()
-
-                        return "You are to be disconnected."
-
+                # When the jabber connection becomes ready
+                @$scope.$on('jabber-connected', =>
+                        console.debug("joining room... #{@$scope.room_name}")
+                        @jabber.room_join(@$scope.room_name, @$scope.nickname, this.onMessageReceived, this.onPresence, this.onRosterList)
                 )
+
+        getShortRoomName: =>
+                ###
+                # Return the short name, i.e. #test from the full room
+                # name, i.e. #test@conference.foo.bar
+                ###
+                if not @$scope.room
+                        return ""
+
+                return Strophe.getNodeFromJid(@$scope.room.name)
+
+        onPresence: (stanza, room) =>
+                console.debug("presence in room changed..")
+                @$scope.room = room
+
+                return true
 
         getVcard: (jid) =>
                 return @$scope.occupants[jid].vcard
@@ -73,8 +79,6 @@ class ChatRoomController
                         ,
                         Strophe.getBareJidFromJid(occupant.jid)
                         )
-
-
 
         sendMessage: =>
                 """
@@ -114,67 +118,5 @@ class ChatRoomController
                 return true
 
 
-        onConnect: (status) =>
-                @$scope.status = status
-
-                switch status
-                        when Strophe.Status.CONNECTING
-                                console.debug("#{status}: Jabber connecting...")
-                                return true
-
-                        when Strophe.Status.CONNFAIL
-                                console.debug("#{status}: Connection failed")
-                                return true
-
-                        when Strophe.Status.AUTHENTICATING
-                                console.debug("#{status}: Authenticating...")
-                                return true
-
-                        when Strophe.Status.AUTHFAIL
-                                console.debug("#{status}: Auth failed")
-                                return true
-
-                        when Strophe.Status.ATTACHED
-                                console.debug("#{status}: Jabber BOSH attached.")
-                                console.debug(@jabber.connection.muc.rooms[@$scope.room_name])
-                                @jabber.room_join(@$scope.room_name, @$scope.nickname, this.onMessageReceived, this.onRosterList)
-                                @$scope.room = @jabber.connection.muc.rooms[@$scope.room_name]
-                                return true
-
-                        when Strophe.Status.CONNECTED
-                                console.debug("#{status}: Jabber connected.")
-                                @jabber.room_join(@$scope.room_name, @$scope.nickname, this.onMessageReceived, this.onRosterList)
-                                @$scope.room = @jabber.connection.muc.rooms[@$scope.room_name]
-                                return true
-
-                        when Strophe.Status.DISCONNECTING
-                                console.debug("#{status}: Disconnecting...")
-                                return true
-
-                        when Strophe.Status.DISCONNECTED
-                                console.debug("#{status}: Disconnected.")
-                                return true
-
-                        when Strophe.Status.ERROR
-                                console.debug("ERROR!")
-                                return true
-
-                return true
-
-        connect: =>
-                # Try to restore connection
-                jid = @localStorageService.get('jid')
-                sid = @localStorageService.get('sid')
-                rid = @localStorageService.get('rid')
-
-                # Empty session
-                @localStorageService.clearAll()
-
-                if jid and sid and rid
-                        console.debug("Attaching connection... #{jid} #{sid} #{rid}")
-                        @jabber.connection_restore(jid, sid, rid, this.onConnect)
-                else
-                        @jabber.connect(@$scope.form.username, @$scope.form.password, this.onConnect)
-
-module.controller("ChatRoomController", ['$scope', 'localStorageService', 'jabber', ChatRoomController])
-module.controller("AlchemyController", ['$scope', AlchemyController])
+module.controller("ChatRoomController", ['$scope', 'jabber', ChatRoomController])
+module.controller("AlchemyController", ['$scope', 'jabber', AlchemyController])
