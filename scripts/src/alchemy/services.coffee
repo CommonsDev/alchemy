@@ -1,4 +1,4 @@
-services = angular.module("alchemy.services", ['LocalStorageModule'])
+services = angular.module("alchemy.services", ['LocalStorageModule', 'ngResource'])
 
 class JabberService
         constructor: (@$rootScope, @localStorageService) ->
@@ -116,5 +116,142 @@ class JabberService
         room_message: (room, msg) =>
                 @connection.muc.groupchat(room, msg) # XXX
 
+class UserMediaService
+        """
+        Service to get video and audio from user
+        """
+        constructor: (@$rootScope) ->
+                RTC = null
+                if navigator.mozGetUserMedia and mozRTCPeerConnection
+                        console.log "This appears to be Firefox"
+                        ua = navigator.userAgent.split(" ")
+                        isnightly = false
+                        try
+                                ver = ua.pop()
+                                build = ua.pop().split("/").pop()
+                                if parseFloat(ver.split("/")[1]) > 21.0
+                                        isnightly = true
+                        catch e
+                                console.error "uhm..."
 
-services.service("jabber", [ "$rootScope", "localStorageService", JabberService])
+                        if isnightly
+                                RTC =
+                                        peerconnection: mozRTCPeerConnection
+                                        browser: "firefox"
+                                        getUserMedia: navigator.mozGetUserMedia.bind(navigator)
+                                        attachMediaStream: (element, stream) ->
+                                                element[0].mozSrcObject = stream
+                                                element[0].play()
+                                        pc_constraints: {}
+
+                                MediaStream::getVideoTracks = ->
+                                        []
+
+                                MediaStream::getAudioTracks = ->
+                                        []
+
+                                window.RTCSessionDescription = mozRTCSessionDescription
+                                window.RTCIceCandidate = mozRTCIceCandidate
+
+                else if navigator.webkitGetUserMedia
+                        console.log "This appears to be Chrome"
+                        RTC =
+                                peerconnection: webkitRTCPeerConnection
+                                browser: "chrome"
+                                getUserMedia: navigator.webkitGetUserMedia.bind(navigator)
+                                attachMediaStream: (element, stream) ->
+                                        element.attr("src", webkitURL.createObjectURL(stream))
+                                pc_constraints:
+                                        optional: [ DtlsSrtpKeyAgreement: "true" ]
+
+                        RTC.pc_constraints = {}  unless navigator.userAgent.indexOf("Android") is -1
+                        unless webkitMediaStream::getVideoTracks
+                                webkitMediaStream::getVideoTracks = ->
+                                        @videoTracks
+                        unless webkitMediaStream::getAudioTracks
+                                webkitMediaStream::getAudioTracks = ->
+                                        @audioTracks
+
+                        unless RTC?
+                                try
+                                        console.log "Browser does not appear to be WebRTC-capable"
+
+                window.RTC = RTC
+                window.RTCPeerconnection = RTC.peerconnection
+
+        getUserMediaWithConstraints: (um, resolution, bandwidth, fps, callback) ->
+                constraints =
+                        audio: false
+                        video: false
+
+                constraints.video = true  if $.inArray("video", um) >= 0
+                constraints.audio = true  if $.inArray("audio", um) >= 0
+
+                if $.inArray("screen", um) >= 0
+                        constraints.video = mandatory:
+                                chromeMediaSource: "screen"
+
+                switch resolution
+                        when "720", "hd"
+                                constraints.video = mandatory:
+                                        minWidth: 1280
+                                        minHeight: 720
+                                        minAspectRatio: 1.77
+                        when "360"
+                                constraints.video = mandatory:
+                                        minWidth: 640
+                                        minHeight: 360
+                                        minAspectRatio: 1.77
+                        when "180"
+                                constraints.video = mandatory:
+                                        minWidth: 320
+                                        minHeight: 180
+                                        minAspectRatio: 1.77
+                        when "960"
+                                constraints.video = mandatory:
+                                        minWidth: 960
+                                        minHeight: 720
+                        when "640", "vga"
+                                constraints.video = mandatory:
+                                        maxWidth: 640
+                                        maxHeight: 480
+                        when "320"
+                                constraints.video = mandatory:
+                                        maxWidth: 320
+                                        maxHeight: 240
+                        else
+                                unless navigator.userAgent.indexOf("Android") is -1
+                                        constraints.video = mandatory:
+                                                maxWidth: 320
+                                                maxHeight: 240
+                                                maxFrameRate: 15
+
+                constraints.video.optional = [ bandwidth: bandwidth ]  if bandwidth
+                constraints.video.mandatory["minFrameRate"] = fps  if fps
+                try
+                        RTC.getUserMedia(constraints, ((stream) ->
+                                console.log("onUserMediaSuccess")
+                                # $(document).trigger "mediaready.jingle", [ stream ]
+                                callback(stream)
+                        ), (error) ->
+                                console.warn("Failed to get access to local media. Error ", error)
+                                $(document).trigger "mediafailure.jingle"
+                        )
+                catch e
+                        console.error "GUM failed: ", e
+                        $(document).trigger "mediafailure.jingle"
+
+
+# Models
+services.factory("Room", ['$resource', '$rootScope', ($resource, $rootScope) ->
+        return $resource("#{$rootScope.CONFIG.REST_URI}api/alambic/v0/room/?format=json")
+])
+
+services.factory("Bucket", ['$resource', '$rootScope', ($resource, $rootScope) ->
+        return $resource("#{$rootScope.CONFIG.REST_URI}bucket/api/v0/bucket/:id?format=json")
+])
+
+
+# Services
+services.service("jabber", ["$rootScope", "localStorageService", JabberService])
+services.service("usermedia", ["$rootScope", UserMediaService])

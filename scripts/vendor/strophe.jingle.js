@@ -64,6 +64,8 @@ Strophe.addConnectionPlugin('jingle', {
                 sess.pc_constraints = this.pc_constraints;
                 sess.ice_config = this.ice_config;
 
+		console.debug("initiate session: initiator=false,localstream=" + this.localStream)
+
                 sess.initiate($(iq).attr('from'), false);
                 // FIXME: setRemoteDescription should only be done when this call is to be accepted
                 sess.setRemoteDescription($(iq).find('>jingle>content'), 'offer');

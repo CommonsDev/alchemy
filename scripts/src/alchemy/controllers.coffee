@@ -1,28 +1,17 @@
 module = angular.module('alchemy.controllers', ['http-auth-interceptor'])
 
 class AlchemyController
-        constructor: (@$scope, @jabber) ->
-                @$scope.room_names = ["#test@conference.carpe.local"] #, "#yeah@conference.carpe.local"]
-
+        constructor: (@$scope, @Room, @jabber) ->
                 @$scope.jabber = @jabber
+
+                @$scope.rooms = []
+                @Room.query((rooms) =>
+                        @$scope.rooms = angular.copy(rooms)
+                        )
 
 
 class VideoChatController
-        waitForRemoteVideo: (selector, sid) =>
-                sess = @jingle.sessions[sid]
-                videoTracks = sess.remoteStream.getVideoTracks()
-
-                if videoTracks.length == 0 or selector[0].currentTime > 0
-                        $(document).trigger('callactive.jingle', [selector, sid])
-                        window.RTC.attachMediaStream(selector, sess.remoteStream); # FIXME: why do i have to do this for FF?
-                        console.log('waitForremotevideo', sess.peerconnection.iceConnectionState, sess.peerconnection.signalingState)
-                else
-                        setTimeout(=>
-                                this.waitForRemoteVideo(selector, sid)
-                        , 100)
-
-
-        constructor: (@$scope, @jabber) ->
+        constructor: (@$scope, @usermedia, @jabber) ->
                 @jingle = @jabber.connection.jingle
 
                 @jingle.PRANSWER = false
@@ -32,7 +21,10 @@ class VideoChatController
                 @jingle.pc_constraints = window.RTC.pc_constraints
                 # @jingle.media_constraints.mandatory['MozDontOfferDataChannel'] = true
 
-                @$scope.chat = this.chat
+
+                # Scope methods
+                @$scope.call = this.call
+                @$scope.is_video_active = false
 
                 $(document).bind('callincoming.jingle', =>
                         console.debug("NOT IMPLEMENTED callincoming")
@@ -79,18 +71,6 @@ class VideoChatController
                 )
 
 
-                $(document).bind('mediaready.jingle', (event, stream) =>
-                        @jingle.localStream = stream
-                        window.RTC.attachMediaStream($('#myvideo'), stream)
-                        @jingle.getStunAndTurnCredentials()
-                        console.debug("init rtc")
-                        peer = @$scope.room_name + '/bob'
-                        @jabber.connection.send($pres({to:peer}))
-                        myroomjid = @$scope.room_name + '/' + Strophe.getNodeFromJid(@jabber.connection.jid)
-                        console.debug(myroomjid)
-                        @jingle.initiate(peer, myroomjid)
-
-                )
 
                 $(document).bind('error.jingle', (event, sid, error) =>
                         console.debug("JINGLE ERROR")
@@ -102,15 +82,49 @@ class VideoChatController
                     console.warn('webrtc did not encounter stun candidates, NAT traversal will not work')
                 )
 
-        chat: =>
-                getUserMediaWithConstraints(['audio', 'video'], '320')
+        waitForRemoteVideo: (selector, sid) =>
+                sess = @jingle.sessions[sid]
+                videoTracks = sess.remoteStream.getVideoTracks()
+
+                if videoTracks.length == 0 or selector[0].currentTime > 0
+                        $(document).trigger('callactive.jingle', [selector, sid])
+                        window.RTC.attachMediaStream(selector, sess.remoteStream); # FIXME: why do i have to do this for FF?
+                        console.log('waitForremotevideo', sess.peerconnection.iceConnectionState, sess.peerconnection.signalingState)
+                else
+                        setTimeout(=>
+                                this.waitForRemoteVideo(selector, sid)
+                        , 100)
+
+        call: (username) =>
+                """
+                Call someone else in the room
+                """
+                @usermedia.getUserMediaWithConstraints(['audio', 'video'], '320', null, null, (stream) =>
+
+                        @$scope.is_video_active = true
+                        @jingle.localStream = stream
+                        window.RTC.attachMediaStream($('#myvideo'), stream) # XXX Fixme
+                        @jingle.getStunAndTurnCredentials()
+
+                        console.debug("init rtc")
+                        peer = "#{@$scope.room.name}/#{username}" # XXX Depends on parent scope
+                        console.debug("Calling #{peer}...")
+
+                        # Send presence to peer
+                        @jabber.connection.send($pres({to:peer}))
+
+                        myroomjid = @$scope.room.name + '/' + Strophe.getNodeFromJid(@jabber.connection.jid)
+                        console.debug(myroomjid)
+                        @jingle.initiate(peer, myroomjid)
+                )
+
 
 class ChatRoomController
         constructor: (@$scope, @$rootScope, @jabber) ->
                 @$scope.status = 0
 
                 @$scope.room_topic = null
-                @$scope.room = null
+                @$scope.xmpp_room = null
 
                 @$scope.messages = []
 
@@ -119,6 +133,9 @@ class ChatRoomController
                 @$scope.form =
                         message: null
 
+
+                @$scope.new_activity_available = false
+
                 @$scope.connect = this.connect
                 @$scope.sendMessage = this.sendMessage
                 @$scope.getShortRoomName = this.getShortRoomName
@@ -126,9 +143,13 @@ class ChatRoomController
                 # When the jabber connection becomes ready
                 @$scope.$on('jabber-connected', =>
                         nickname = Strophe.getNodeFromJid(@$rootScope.jabber_login.username)
-                        console.debug("joining room... #{@$scope.room_name} with nickname #{nickname}")
-                        @jabber.room_join(@$scope.room_name, nickname, this.onMessageReceived, this.onPresence, this.onRosterList)
-                        @$scope.$broadcast('room-joined', @$scope.room_name)
+                        console.debug("joining room... #{@$scope.room.name} with nickname #{nickname}")
+                        @jabber.room_join(@$scope.room.name, nickname, this.onMessageReceived, this.onPresence, this.onRosterList)
+                        @$scope.$broadcast('room-joined', @$scope.room.name)
+                )
+
+                @$scope.$on('file-uploaded', (e, file) =>
+                        @jabber.room_message(@$scope.xmpp_room.name, "#{@$rootScope.MEDIA_URI}#{file.thumbnail_url}") # XXX Dup name
                 )
 
         getShortRoomName: =>
@@ -136,15 +157,15 @@ class ChatRoomController
                 # Return the short name, i.e. #test from the full room
                 # name, i.e. #test@conference.foo.bar
                 ###
-                if not @$scope.room
+                if not @$scope.xmpp_room
                         return ""
 
-                return Strophe.getNodeFromJid(@$scope.room.name)
+                return Strophe.getNodeFromJid(@$scope.xmpp_room.name)
 
         onPresence: (stanza, room) =>
                 console.debug("presence in room changed..")
                 @$scope.$apply(=>
-                        @$scope.room = room
+                        @$scope.xmpp_room = room
                 )
 
                 return true
@@ -184,7 +205,7 @@ class ChatRoomController
                 """
                 On form submit, send message to room
                 """
-                @jabber.room_message(@$scope.room.name, @$scope.form.message)
+                @jabber.room_message(@$scope.xmpp_room.name, @$scope.form.message)
                 @$scope.form.message = ""
 
         onMessageReceived: (stanza, room) =>
@@ -192,7 +213,13 @@ class ChatRoomController
                 When receiving a message from the chatroom
                 """
                 from = stanza.getAttribute('from')
+                from_nickname = Strophe.getResourceFromJid(from)
                 to = stanza.getAttribute('to')
+                delayed = $(stanza).find(">delay[xmlns='urn:xmpp:delay']").length > 0
+
+                # Notify there i sgnew unseen activity
+                if from_nickname != @$scope.xmpp_room.nick and not delayed
+                        @$scope.new_activity_available = true
 
                 # Set topic?
                 query = stanza.getElementsByTagName("subject")
@@ -209,7 +236,7 @@ class ChatRoomController
                 if message
                         @$scope.$apply(=>
                                 @$scope.messages.push(
-                                        from: Strophe.getResourceFromJid(from)
+                                        from: from_nickname
                                         text: message
                                 )
                         )
@@ -217,7 +244,19 @@ class ChatRoomController
 
                 return true
 
+class BucketController
+        """
+        File bucket
+        """
+        constructor: (@$scope, @Bucket) ->
 
+                @$scope.files = []
+
+                @Bucket.get({id: @$scope.room.bucket.id}, (bucket) =>
+                        @$scope.files = angular.copy(bucket.files)
+                )
+
+module.controller("BucketController", ['$scope', 'Bucket', BucketController])
 module.controller("ChatRoomController", ['$scope', '$rootScope', 'jabber', ChatRoomController])
-module.controller("VideoChatController", ['$scope', 'jabber', VideoChatController])
-module.controller("AlchemyController", ['$scope', 'jabber', AlchemyController])
+module.controller("VideoChatController", ['$scope', 'usermedia', 'jabber', VideoChatController])
+module.controller("AlchemyController", ['$scope', 'Room', 'jabber', AlchemyController])

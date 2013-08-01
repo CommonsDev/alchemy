@@ -27,7 +27,6 @@
 
     <!-- jingle -->
     <script src="scripts/vendor/strophe.jingle.js"></script>
-    <script src="scripts/vendor/strophe.jingle.adapter.js"></script>
     <script src="scripts/vendor/strophe.jingle.session.js"></script>
     <script src="scripts/vendor/strophe.jingle.sdp.js"></script>
 
@@ -44,6 +43,15 @@
     <script src="scripts/vendor/angular-imageupload.js"></script>
 
 
+    <script src="scripts/vendor/masonry.pkgd.min.js"></script>
+
+
+    <!-- fileupload -->
+    <script type="text/javascript" src="//cdn.jsdelivr.net/jquery.fileupload/8.6.1/js/vendor/jquery.ui.widget.js"></script>
+    <script type="text/javascript" src="//cdn.jsdelivr.net/jquery.fileupload/8.6.1/js/jquery.iframe-transport.js"></script>
+    <script type="text/javascript" src="//cdn.jsdelivr.net/jquery.fileupload/8.6.1/js/jquery.fileupload.js"></script>
+
+
     <!-- Map module -->
     <script src="scripts/lib/alchemy/services.js"></script>
     <script src="scripts/lib/alchemy/controllers.js"></script>
@@ -53,55 +61,54 @@
     <script src="scripts/app.js"></script>
 
     <script type="text/javascript">
-         window.RTC = setupRTC();
       $(document).ready(function() {
          $('#room-tabs a:first').tab('show');
-
-         if ( window.RTC != null ) {
-            RTCPeerconnection = window.RTC.peerconnection;
-         }
-
       });
     </script>
 
   </head>
   <body>
-    <div id="page" class="container-fluid fill" ng-controller="AlchemyController">
+    <div id="page" class="container-fluid" ng-controller="AlchemyController">
 
       <!-- login form -->
-      <div ng-show="jabber.status < 5">
+      <div ng-show="jabber.status < 5" class="row-fluid">
 
-	<form name="loginForm" ng-submit="jabber.connect()" >
-	  <h2>Please login using your Jabber or Gtalk ID</h2>
-    	  <input type="text" ng-model="jabber_login.username" name="username" required/>
-    	  <input type="password" ng-model="jabber_login.password" required>
-    	  <button class="btn">Connect</button>
-	</form>
-
-	<h2 ng-show="jabber.status == 1">Connecting...</h2>
-	<h2 ng-show="jabber.status == 3">Authenticating...</h2>
-      
-	<div class="progress progress-striped active">
-	  <div class="bar" style="width: {{ jabber.status*10 }}%;"></div>
+	<!-- login form -->
+	<div class="offset3 span6">
+	  <form id="loginForm" ng-submit="jabber.connect()">
+	    <img src="images/logo.png" alt="Alchemy"/>
+	    <h1>Alchemy</h1>
+    	    <input type="text" ng-model="jabber_login.username" name="username" required/>
+    	    <input type="password" ng-model="jabber_login.password" required>
+    	    <button class="btn">Connect</button>
+	    
+	    <h2 ng-show="jabber.status == 1">Connecting...</h2>
+	    <h2 ng-show="jabber.status == 3">Authenticating...</h2>
+	    
+	    <div ng-show="jabber.status > 0" class="progress progress-striped active">
+	      <div class="bar" style="width: {{ jabber.status*10 }}%;"></div>
+	    </div>
+	  </form>
 	</div>
 
       </div>
 
 
       <!-- room tabs -->
-      <ul id="room-tabs" class="nav nav-tabs">
-	<li ng-repeat="room_name in room_names"><a href="#room-{{ $index }}" data-toggle="tab">{{ room_name }}</a></li>
+      <ul ng-show="jabber.status >= 5" id="room-tabs" class="nav nav-tabs">
+	<li ng-repeat="room in rooms"><a ng-href="#room-{{ $index }}" data-toggle="tab">{{ room.name }}</a></li>
 	<li><a href="#">+</a></li>
       </ul>
 
       <!-- rooms -->
       <div class="tab-content">
 
-	<div ng-repeat="room_name in room_names" ng-controller="ChatRoomController" class="tab-pane" id="room-{{ $index }}">
+	<div ng-repeat="room in rooms" ng-controller="ChatRoomController" class="tab-pane" id="room-{{ $index }}">
 	  
-	  <div class="row-fluid" ng-show="room">  <!-- room joined -->
+	  <div class="row-fluid" ng-show="xmpp_room">  <!-- room joined -->
 
 	    <div class="span9">
+	      <span class="badge" ng-show="new_activity_available">NEW ACTIVITY!</span>
 	      <div>
 		<!-- message listing -->
 		<div id="message-box" class="row-fluid">
@@ -122,7 +129,10 @@
 		<!-- send message -->
 		<div class="row-fluid">
 		  <form name="chatForm" ng-submit="sendMessage()">
-		    <div class="input-append offset2 span10">
+		    <div class="span1">
+		      <a href="#">&lt;- History</a>
+		    </div>
+		    <div class="input-append offset1 span10">
 		      <input class="span11" type="text" name="message" ng-model="form.message" placeholder="Type your message..." required/>
 		      <button class="btn">Send</button>
 		    </div>
@@ -143,10 +153,9 @@
 		<h3>Who's here?</h3>
 
 		<div ng-controller="VideoChatController">
-		  <button ng-click="chat()">Chat!</button>
-		  <video id="myvideo"></video>
-		  <div id="remotevideo"></div>
-		</div>
+
+		<video ng-show="is_video_active" id="myvideo"></video>
+		<div id="remotevideo"></div>
 
 
 		<ul class="unstyled">
@@ -158,20 +167,33 @@
 		      </a>
 		      <div class="media-body">
 			<h4 class="media-heading">{{ occupant.occupant.nick }}</h4>
+			<button ng-if="occupant.occupant.nick != room.nick" ng-click="call(occupant.occupant.nick)">[Call]</button>
 		      </div>
 		    </div>
 		  </li>
 		</ul>
 
-		<h3>Files</h3>
-		TBD
 
-		<div>
 		</div>
+
+		<h3>Uploaded Files</h3>
+		<file-upload bucket="{{ room.bucket.id }}" dropzone="room-{{$index}}"></file-upload>
+
+		<div ng-controller="BucketController">
+		  <div class="masonry">
+                    <div class="masonry-brick" ng-repeat="file in files">
+                      <!-- <span>{{file.file}}</span> -->
+                      <a href="{{ MEDIA_URI }}{{ file.file }}" target="_new"><img ng-src="{{ MEDIA_URI }}{{file.thumbnail_url}}"/></a>
+                    </div>
+                  </div>
+		</div>
+
 
 	      </div>
 	    </div>
+
 	  </div>  <!-- room -->
+
 
 	</div>
 

@@ -1,6 +1,6 @@
 config = {
     templateBaseUrl: '/views/',
-    REST_URI: 'http://192.168.2.168\\:8000/api/'
+    REST_URI: 'http://carpe.local\\:8000/'
 }
 
 app = angular.module('alchemy', ['alchemy.controllers', 'alchemy.services', 'alchemy.directives']);
@@ -30,6 +30,6 @@ app.config(['$locationProvider', '$routeProvider', 'moduleTemplateBaseUrl', func
 				      ])
 
 app.run(['$rootScope', function($rootScope) {
-  $rootScope.MEDIA_URI = 'http://localhost:8000';
+  $rootScope.MEDIA_URI = 'http://carpe.local:8000';
   $rootScope.CONFIG = config;
 }]);
