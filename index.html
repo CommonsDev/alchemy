@@ -9,7 +9,7 @@
     <base href="/">
 
     <!-- css -->
-    <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0-rc1/css/bootstrap.min.css">
     <link rel="stylesheet" href="styles/css/screen.css">
     <link rel="stylesheet" href="styles/css/jquery.oembed.css">
 
@@ -32,7 +32,7 @@
 
 
     <!-- bootstrap -->
-    <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0-rc1/js/bootstrap.min.js"></script>
 
     <!-- angular -->
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.1.5/angular.min.js"></script>
@@ -71,15 +71,16 @@
     <div id="page" class="container-fluid" ng-controller="AlchemyController">
 
       <!-- login form -->
-      <div ng-show="jabber.status < 5" class="row-fluid">
+      <div ng-show="jabber.status < 5" class="row">
 
 	<!-- login form -->
-	<div class="offset3 span6">
-	  <form id="loginForm" ng-submit="jabber.connect()">
-	    <img src="images/logo.png" alt="Alchemy"/>
-	    <h1>Alchemy</h1>
-    	    <input type="text" ng-model="jabber_login.username" name="username" required/>
-    	    <input type="password" ng-model="jabber_login.password" required>
+	<div class="col-offset-3 col-lg-6">
+	  <img src="images/logo.png" alt="Alchemy"/>
+	  <h1>Alchemy</h1>
+
+	  <form id="loginForm" class="form-inline" ng-submit="jabber.connect()">
+    	    <input class="form-control" type="text" ng-model="jabber_login.username" name="username" required/>
+    	    <input class="form-control" type="password" ng-model="jabber_login.password" required>
     	    <button class="btn">Connect</button>
 	    
 	    <h2 ng-show="jabber.status == 1">Connecting...</h2>
@@ -105,46 +106,123 @@
 
 	<div ng-repeat="room in rooms" ng-controller="ChatRoomController" class="tab-pane" id="room-{{ $index }}">
 	  
-	  <div class="row-fluid" ng-show="xmpp_room">  <!-- room joined -->
+	  <div class="row" ng-show="xmpp_room">  <!-- room joined -->
 
-	    <div class="span9">
+	    <div class="col-lg-1">
+	      <ul class="nav nav-pills nav-stacked">
+		<li class="active"><a href="#room-{{ $index }}-chat" data-toggle="pill">Chat</a></li>
+		<li><a href="#room-{{ $index }}-pinboard" data-toggle="tab">Pinboard</a></li>
+		<li><a href="#room-{{ $index }}-taskboard" data-toggle="pill">Taskboard</a></li>
+	      </ul>
+	    </div>
+
+	    <div class="col-lg-8">
 	      <span class="badge" ng-show="new_activity_available">NEW ACTIVITY!</span>
-	      <div>
-		<!-- message listing -->
-		<div id="message-box" class="row-fluid">
-		  <div class="span12">
-		    <dl class="dl-horizontal message-list">
-		      <div ng-repeat="msg in messages">
-			<dt ng-hide="{{ msg.from == nickname }}">{{ msg.from }}</dt>
-			<dt class="mine" ng-show="{{ msg.from == nickname }}">{{ msg.from }}</dt>
-			<dd>
-			  <span muc-messages>{{ msg.text }}</span>
-			</dd>
+
+
+	      <div class="tab-content">
+
+		<!-- chat -->
+		<div class="tab-pane active" id="room-{{ $index }}-chat">
+		  <!-- message listing -->
+		  <div id="message-box" class="row">
+		    <div class="col-lg-12">
+		      <dl class="dl-horizontal message-list">
+			<div ng-repeat="msg in messages">
+			  <dt ng-hide="{{ msg.from == nickname }}">{{ msg.from }}</dt>
+			  <dt class="mine" ng-show="{{ msg.from == nickname }}">{{ msg.from }}</dt>
+			  <dd>
+			    <span muc-messages>{{ msg.text }}</span>
+			  </dd>
+			</div>
+		      </dl>
+		    </div>
+		  </div>
+		  
+		  
+		  <!-- send message -->
+		  <div class="row">
+		    <form class="form-inline" name="chatForm" ng-submit="sendMessage()">
+		      <div class="col-lg-1">
+			<a href="#">&lt;- History</a>
 		      </div>
-		    </dl>
+		      <div class="input-append col-offset-1 col-lg-8">
+			<input class="form-control" type="text" name="message" ng-model="form.message" placeholder="Type your message..." required/>
+			<button class="btn">Send</button>
+		      </div>
+		    </form>
+		  </div>
+		  
+		</div>
+
+		<!-- pinboard -->
+		<div class="tab-pane" id="room-{{ $index }}-pinboard">
+		  <div ng-controller="BucketController">
+		    <div class="masonry">
+                      <div class="masonry-brick" ng-repeat="file in files">
+			<div class="thumbnail">
+			  <a href="{{ MEDIA_URI }}{{ file.file }}" target="_new"><img ng-src="{{ MEDIA_URI }}{{file.thumbnail_url}}"/></a>
+			  <div class="caption">
+			    {{ file.description }}
+			    <span ng-repeat="tag in file.tags" class="badge">{{ tag.name }}</span>
+			    <ul class="media-list">
+			      <li class="media" ng-repeat="comment in file.comments">
+				<a class="pull-left" href="#">
+				  <img class="media-object" src="http://dimelo-answers-production.s3-eu-west-1.amazonaws.com/121/7e062d6768434159/avatar_default_small.jpg"> <!-- FIXME! -->
+				</a>
+				<div class="media-body">
+				  <h4 class="media-heading">by: {{ comment.submitted_by }}</h4>
+				  {{ comment.text }}
+				</div>
+			      </li>
+			    </ul>
+
+			  </div>
+			</div>
+                      </div>
+                    </div>
 		  </div>
 		</div>
-
 		
-		<!-- send message -->
-		<div class="row-fluid">
-		  <form name="chatForm" ng-submit="sendMessage()">
-		    <div class="span1">
-		      <a href="#">&lt;- History</a>
-		    </div>
-		    <div class="input-append offset1 span10">
-		      <input class="span11" type="text" name="message" ng-model="form.message" placeholder="Type your message..." required/>
-		      <button class="btn">Send</button>
-		    </div>
-		  </form>
-		</div>
 
-	      </div>
+		<!-- taskboard -->
+		<div class="tab-pane" id="room-{{ $index }}-taskboard">
+		  <div id="ffboard" ng-show="room.issue_tracker" ng-controller="FFBoardController">
+		    <h3>{{ board.title }}</h3>
+		    <ul class="col-lg-2 well unstyled" ng-repeat="fflist in board.lists" ng-controller="FFListController">
+		      <h4>{{ fflist.title }}</h4>
+		      <li class="well" ng-repeat="card in fflist.cards">
+			<h4>{{ card.title }}</h4>
+			<i>{{ card.description }}</i>
+			<span ng-show="card.due_date">Deadline: {{ card.due_date }}</span>
+			<span ng-repeat="tag in card.tags" class="badge">{{ tag.name }}</span>
+			<ul ng-show="card.tasks">
+			  <h5>Checklist</h5>
+			  <li ng-repeat="task in card.tasks">{{ task.title }}</li>
+			</ul>
+			
+			<ul ng-show="card.assigned_to">
+			  <h5>Assignee-s</h5>
+			  <li ng-repeat="member in assigned_to">{{ member }}</li>
+			</ul>
+		      </li>
+		      [<a href="#">Add card</a>]
+		    </ul>
+		    <ul class="col-lg-2 well unstyled">
+		      <li>[<a href="#">+ Add list</a>]</li>
+		    </ul>
+		  </div>
+		</div> <!-- task tracker -->
+
+	      </div> <!-- tab content -->
+
 
 	    </div> <!-- left part -->
 
-	    <div id="sidebar" class="span3 well">
-	      <h3>{{ getShortRoomName() }}</h3>
+	    <div id="sidebar" class="col-lg-3 panel">
+	      <div class="panel-heading">
+		<h3 class="panel-title">{{ getShortRoomName() }}</h3>
+	      </div>
 
 	      <p class="lead" ng-show="room_topic">{{ room_topic }}</p>
 	      <p class="lead" ng-hide="room_topic"><em>No topic set.</em></p>
@@ -154,26 +232,25 @@
 
 		<div ng-controller="VideoChatController">
 
-		<video ng-show="is_video_active" id="myvideo"></video>
-		<div id="remotevideo"></div>
+		  <video ng-show="is_video_active" id="myvideo"></video>
+		  <div id="remotevideo"></div>
 
 
-		<ul class="unstyled">
-		  <li ng-repeat="occupant in occupants">
-		    <div class="media">
-		      <a class="pull-left" href="#">
-			<img width="50px" height="50px" class="media-object" ng-show="occupant.vcard.photo_data" ng-src="data:{{occupant.vcard.photo_type}};base64,{{ occupant.vcard.photo_data}}" alt="{{ occupant.occupant.nick }}"/>
-			<img width="50px" height="50px" class="media-object" ng-hide="occupant.vcard.photo_data" ng-src="https://do50qumledbw5.cloudfront.net/img/avatar.png" alt="{{ occupant.occupant.nick }}"/>
-		      </a>
-		      <div class="media-body">
-			<h4 class="media-heading">{{ occupant.occupant.nick }}</h4>
-			<button ng-if="occupant.occupant.nick != room.nick" ng-click="call(occupant.occupant.nick)">[Call]</button>
+		  <ul class="unstyled">
+		    <li ng-repeat="occupant in occupants">
+		      <div class="media">
+			<a class="pull-left" href="#">
+			  <img width="50px" height="50px" class="media-object" ng-show="occupant.vcard.photo_data" ng-src="data:{{occupant.vcard.photo_type}};base64,{{ occupant.vcard.photo_data}}" alt="{{ occupant.occupant.nick }}"/>
+			  <img width="50px" height="50px" class="media-object" ng-hide="occupant.vcard.photo_data" ng-src="https://do50qumledbw5.cloudfront.net/img/avatar.png" alt="{{ occupant.occupant.nick }}"/>
+			</a>
+			<div class="media-body">
+			  <h4 class="media-heading">{{ occupant.occupant.nick }}</h4>
+			  <button ng-if="occupant.occupant.nick != room.nick" ng-click="call(occupant.occupant.nick)">[Call]</button>
+			</div>
 		      </div>
-		    </div>
-		  </li>
-		</ul>
-
-
+		    </li>
+		  </ul>
+		  
 		</div>
 
 		<h3>Uploaded Files</h3>
@@ -183,7 +260,7 @@
 		  <div class="masonry">
                     <div class="masonry-brick" ng-repeat="file in files">
                       <!-- <span>{{file.file}}</span> -->
-                      <a href="{{ MEDIA_URI }}{{ file.file }}" target="_new"><img ng-src="{{ MEDIA_URI }}{{file.thumbnail_url}}"/></a>
+                      <a class="thumbnail" href="{{ MEDIA_URI }}{{ file.file }}" target="_new"><img ng-src="{{ MEDIA_URI }}{{file.thumbnail_url}}"/></a>
                     </div>
                   </div>
 		</div>

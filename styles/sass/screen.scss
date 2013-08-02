@@ -7,7 +7,12 @@ dl.message-list div:nth-child(even) {
     background-color: #eaeaea;
 }
 
-.masonry-brick { width: 25%; }
+.masonry-brick { width: 20%; }
+
+.masonry-brick > a > img {
+    width: 100%;
+    max-width: 150px;
+}
 
 #loginForm {
     text-align: center;

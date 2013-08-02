@@ -256,6 +256,32 @@ class BucketController
                         @$scope.files = angular.copy(bucket.files)
                 )
 
+class FFBoardController
+        """
+        Flip flop board controller
+        """
+        constructor: (@$scope, @FFBoard) ->
+                @$scope.board = null
+
+                @FFBoard.get({id: @$scope.room.issue_tracker.id}, (board) => # FIXME Hardcoded value
+                        @$scope.board = angular.copy(board)
+                )
+
+
+class FFListController
+        """
+        Flip Flop list controller
+        """
+        constructor: (@$scope, @FFList) ->
+                @$scope.list = []
+
+                @FFList.get({id: @$scope.fflist.id}, (list) =>
+                        @$scope.list = angular.copy(list)
+                )
+
+module.controller("FFBoardController", ['$scope', 'FFBoard', FFBoardController])
+module.controller("FFListController", ['$scope', 'FFList', FFListController])
+
 module.controller("BucketController", ['$scope', 'Bucket', BucketController])
 module.controller("ChatRoomController", ['$scope', '$rootScope', 'jabber', ChatRoomController])
 module.controller("VideoChatController", ['$scope', 'usermedia', 'jabber', VideoChatController])

@@ -251,6 +251,16 @@ services.factory("Bucket", ['$resource', '$rootScope', ($resource, $rootScope) -
         return $resource("#{$rootScope.CONFIG.REST_URI}bucket/api/v0/bucket/:id?format=json")
 ])
 
+# FlipFlop Models
+services.factory("FFBoard", ['$resource', '$rootScope', ($resource, $rootScope) ->
+        return $resource("#{$rootScope.CONFIG.REST_URI}flipflop/api/v0/board/:id?format=json")
+])
+
+services.factory("FFList", ['$resource', '$rootScope', ($resource, $rootScope) ->
+        return $resource("#{$rootScope.CONFIG.REST_URI}flipflop/api/v0/list/:id?format=json")
+])
+
+
 
 # Services
 services.service("jabber", ["$rootScope", "localStorageService", JabberService])
